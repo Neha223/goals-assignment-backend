@@ -1,89 +1,117 @@
 const Signup = require('../models/signup');
+const { default: ShortUniqueId } = require('short-unique-id');
+const multer = require("multer");
+var fs = require('fs');
+const FileReader = require('filereader');
+
+const uid = new ShortUniqueId();
+
+// To access multipart/form-data
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './public')
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname)
+    }
+})
+const upload = multer({ storage }).array('file');
 
 const CommonController = {
     signup (req, res) {
-        const requestBody = req.body;
-        console.log('data',requestBody);
-        // // Creates a new record from a submitted form
-        // const newOrder = new Order(requestBody);
-        // // and saves the record to
-        // // the data base
-        // newOrder.save( (err, result) => {
-        //     // Returns the saved order
-        //     // after a successful save
-        //     console.log(result);
-        //     if (err) {
-        //         return res.status(400).json({message: 'Some Error Occured!'});
-        //     }
-        //     const text = 'Hi, Hurray! You got another order.';
-        //     console.log('By using any medium seller can be notified that he got another order: ',text);
-        //     // Seller.find((err,result) => {
-        //     //     // console.log('seller',result);
-        //     //     const seller = result[0];
-        //     //     const to = +91 + seller.mobile;
-        //     //     const text = 'Hi '+seller.name+', Hurray! You got another order.';
-        //     //     console.log(text);
-        //     //     // sendSms(to,text)
-        //     // });
-            
-            
-           
-
-        //     res.status(200).json({
-        //         status: 200,
-        //         message: 'Order Placed Successfully!',
-        //         orderId: result._id
-        //     });
-        // } )
+        upload(req, res, function (err) {
+            console.log('data',req.body);
+            const signupData = {
+                name: req.body.brandName,
+                fileName: req.files[0].filename ,
+                details: {
+                    name: req.body.detailsName,
+                    designation: req.body.detailsDesignation,
+                    phone: req.body.detailsPhone,
+                    email: req.body.detailsEmail
+                },
+                status: 'pending'
+            }
+            console.log("Request file ---", req.files[0]);//Here you get file.
+            const newData = new Signup(signupData);
+            newData.save( (err,result) => {
+                if(err) {
+                    return res.status(400).json({message: 'Some Error Occured!'});
+                }
+                res.status(200).json({
+                            status: 200,
+                            message: 'Data Saved Successfully!'
+                        });
+            })
+        });
     },
-    updateStatus (req, res) {
-        let idParam = req.body.order_id;
-        // Finds a order to be updated
-        Order.findOne({_id: idParam}, (err, data) => {
-            // Updates the product payload
-            data.status = req.body.status;
-            // Saves the product
-            data.save((err, updated) => {
-                console.log(updated);
+    getAllRecords (req, res) {
+        const status = req.query.status;
+        console.log(status);
+        Signup.find({ "status": status },function (err, records) {
+            if (err) {
+                console.log(err);
+            }
+            else {
                 res.json({
                     status: 200,
-                    message: 'Order Status Updated Successfully!',
-                    orderId: updated._id
-                })
-            });
-        })
-    },
-    byId (req, res) {
-        const idParam = req.params.id;
-        // Returns a single order
-        // based on the passed in ID parameter
-        Order
-            .findOne({_id: idParam})
-            .exec( (err, order) => res.json({
-                status: 200,
-                message: 'Order Fetched Successfully!',
-                order: order
-            }) );
-    },
-    createSeller (req, res) {
-        const requestBody = req.body;
-        // Creates a new record from a submitted form
-        const newSeller = new Seller(requestBody);
-        // and saves the record to
-        // the data base
-        newSeller.save( (err, result) => {
-            // Returns the saved order
-            // after a successful save
-            console.log(result);
-            if (err) {
-                return res.status(400).json({message: 'Some Error Occured!'});
+                    message: 'Data Fetch Successfully!',
+                    data: records});
             }
-            res.status(200).json({
-                status: 200,
-                message: 'Seller Created Successfully!'
-            });
-        } )
+        });
     },
+    changeStatus (req, res) {
+        const data = req.body;
+        console.log(req.body);
+        Signup.findByIdAndUpdate(data.id, {
+            'status': data.status
+        }, function (err, data) {
+            if (err) {
+                res.status(400).json({ 'Record': 'unable to update database', status: 400 });
+            } else {
+                res.status(200).json({ 'Record': 'Record updated successfully', status: 200 });
+            }
+        });
+    },
+    searchData (req, res) {
+        const data = req.body;
+        console.log(req.body);
+        Signup.find({
+            'name': data.search,
+            'status': data.status
+        }, function (err, data) {
+            if (err) {
+                res.status(400).json({ 'Record': 'unable to update database', status: 400 });
+            } else {
+                res.status(200).json({ 'Record': 'Record updated successfully', status: 200, data: data });
+            }
+        });
+    },
+    checkPhoneByValue (req,res) {
+        const phone = req.query.phone;
+        Signup.find({
+            'details.phone': phone
+        }, function (err, data) {
+            if (err) {
+                res.status(400).json({ 'Record': 'unable to update database', status: 400 });
+            } else {
+                res.status(200).json({ 'Record': 'Record updated successfully', status: 200, data: data });
+            }
+        });
+    },
+    checkEmailByValue (req,res) {
+        const email = req.query.email;
+        Signup.find({
+            'details.email': email
+        }, function (err, data) {
+            if (err) {
+                res.status(400).json({ 'Record': 'unable to update database', status: 400 });
+            } else {
+                res.status(200).json({ 'Record': 'Record updated successfully', status: 200, data: data });
+            }
+        });
+
+    }
 };
 
 module.exports = CommonController;

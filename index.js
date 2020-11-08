@@ -4,11 +4,20 @@ const http = require('http');
 const mongoose = require('mongoose');
 const dbConfig = require('./config/database.config');
 const routes = require('./routes/routes');
+var cors = require('cors');
 
 const app = express();
 
+app.use(cors())   // Enable cors to access with different host
+app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "http://localhost:4200");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+  });
+app.use('/public/',express.static(__dirname + '/public/'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
+
 
 app.use('/api', routes);
 
